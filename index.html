@@ -12,6 +12,9 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -42,7 +45,7 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #555; }
-        .modal-overlay {
+        .modal-overlay, .loading-overlay {
             transition: opacity 0.3s ease;
         }
         .file-input-label {
@@ -62,16 +65,22 @@
     </style>
 </head>
 <body class="p-4 md:p-8">
-    <div class="max-w-7xl mx-auto">
+    <div id="app-container" class="max-w-7xl mx-auto">
         <header class="mb-8">
-            <div class="flex flex-col md:flex-row justify-between items-center">
+            <div class="flex flex-col md:flex-row justify-between items-start">
                 <div class="text-center md:text-left mb-4 md:mb-0">
                     <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Meu Painel Financeiro</h1>
                     <p class="text-gray-500 mt-2">Sua vida financeira, organizada e visual.</p>
                 </div>
-                <div>
-                    <label for="month-selector" class="block text-sm font-medium text-gray-700 mb-1">Mês de Referência</label>
-                    <input type="month" id="month-selector" class="p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500">
+                <div class="flex flex-col sm:flex-row items-center gap-4">
+                     <div>
+                        <label for="month-selector" class="block text-sm font-medium text-gray-700 mb-1">Mês</label>
+                        <input type="month" id="month-selector" class="p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="download-png-btn" class="mt-2 sm:mt-6 bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-700 transition-colors text-sm">Baixar PNG</button>
+                        <button id="download-pdf-btn" class="mt-2 sm:mt-6 bg-red-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-800 transition-colors text-sm">Baixar PDF</button>
+                    </div>
                 </div>
             </div>
         </header>
@@ -157,6 +166,8 @@
     </div>
 
     <div id="confirmation-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50"><div class="bg-white rounded-lg p-8 shadow-2xl max-w-sm w-full text-center"><h3 class="text-xl font-bold mb-4">Tem certeza?</h3><p class="text-gray-600 mb-6">Esta ação apagará todos os gastos variáveis do mês selecionado. Essa ação não pode ser desfeita.</p><div class="flex justify-center gap-4"><button id="cancel-clear-btn" class="px-6 py-2 rounded-md text-gray-800 bg-gray-200 hover:bg-gray-300 font-semibold">Cancelar</button><button id="confirm-clear-btn" class="px-6 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 font-semibold">Apagar</button></div></div></div>
+    
+    <div id="loading-overlay" class="loading-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50"><div class="bg-white rounded-lg py-4 px-8 shadow-2xl flex items-center gap-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div><span class="text-lg font-semibold">Gerando arquivo...</span></div></div>
 
 <script>
 const AppState = {
@@ -194,74 +205,94 @@ const AppState = {
             this.getMonthData(this.selectedMonth);
             this.renderAll();
         });
-        document.getElementById('variable-expense-form').addEventListener('submit', (e) => {
-            e.preventDefault(); this.addVariableExpense();
-        });
-        document.getElementById('clear-history-btn').addEventListener('click', () => this.showModal());
-        document.getElementById('cancel-clear-btn').addEventListener('click', () => this.hideModal());
+        document.getElementById('variable-expense-form').addEventListener('submit', (e) => { e.preventDefault(); this.addVariableExpense(); });
+        document.getElementById('clear-history-btn').addEventListener('click', () => this.showModal('confirmation-modal'));
+        document.getElementById('cancel-clear-btn').addEventListener('click', () => this.hideModal('confirmation-modal'));
         document.getElementById('confirm-clear-btn').addEventListener('click', () => this.confirmClearHistory());
-        document.getElementById('confirmation-modal').addEventListener('click', (e) => {
-             if (e.target.id === 'confirmation-modal') this.hideModal();
-        });
+        document.getElementById('confirmation-modal').addEventListener('click', (e) => { if (e.target.id === 'confirmation-modal') this.hideModal('confirmation-modal'); });
+        
         document.getElementById('csv-file-input').addEventListener('change', (e) => {
             const importBtn = document.getElementById('import-csv-btn');
             const fileChosenText = document.getElementById('file-chosen-text');
             if (e.target.files.length > 0) {
-                importBtn.disabled = false;
-                fileChosenText.textContent = e.target.files[0].name;
+                importBtn.disabled = false; fileChosenText.textContent = e.target.files[0].name;
             } else {
-                importBtn.disabled = true;
-                fileChosenText.textContent = 'Clique para escolher um arquivo';
+                importBtn.disabled = true; fileChosenText.textContent = 'Clique para escolher um arquivo';
             }
         });
         document.getElementById('import-csv-btn').addEventListener('click', () => this.importCSV());
+
+        document.getElementById('download-png-btn').addEventListener('click', () => this.downloadDashboard('png'));
+        document.getElementById('download-pdf-btn').addEventListener('click', () => this.downloadDashboard('pdf'));
+    },
+
+    downloadDashboard(format) {
+        this.showModal('loading-overlay');
+        const elementToCapture = document.getElementById('app-container');
+        
+        html2canvas(elementToCapture, { 
+            useCORS: true, 
+            backgroundColor: '#F8F7F4',
+            onclone: (document) => {
+                 document.getElementById('loading-overlay').style.display = 'none';
+            }
+        }).then(canvas => {
+            const fileName = `painel-financeiro-${this.selectedMonth}`;
+
+            if (format === 'png') {
+                const image = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = image;
+                link.download = `${fileName}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else if (format === 'pdf') {
+                const { jsPDF } = window.jspdf;
+                const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                const pdf = new jsPDF({
+                    orientation: canvas.width > canvas.height ? 'l' : 'p',
+                    unit: 'px',
+                    format: [canvas.width, canvas.height]
+                });
+                pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+                pdf.save(`${fileName}.pdf`);
+            }
+            this.hideModal('loading-overlay');
+        }).catch(err => {
+            console.error('Erro ao gerar arquivo:', err);
+            alert('Ocorreu um erro ao gerar o arquivo. Tente novamente.');
+            this.hideModal('loading-overlay');
+        });
     },
 
     importCSV() {
         const fileInput = document.getElementById('csv-file-input');
-        if (fileInput.files.length === 0) {
-            alert('Por favor, selecione um arquivo CSV primeiro.');
-            return;
-        }
+        if (fileInput.files.length === 0) { alert('Por favor, selecione um arquivo CSV primeiro.'); return; }
         const file = fileInput.files[0];
         const reader = new FileReader();
 
         reader.onload = (event) => {
             const text = event.target.result;
             const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-            if (lines.length < 2) {
-                alert('Arquivo CSV inválido ou vazio. Precisa de um cabeçalho e pelo menos uma linha de dados.');
-                return;
-            }
+            if (lines.length < 2) { alert('Arquivo CSV inválido ou vazio.'); return; }
             
             const header = lines[0].toLowerCase();
-            if (!header.includes('data') || !header.includes('descricao') || !header.includes('valor') || !header.includes('categoria')) {
-                alert('Cabeçalho do CSV inválido. As colunas devem ser: Data,Descricao,Valor,Categoria.');
-                return;
-            }
+            if (!header.includes('data') || !header.includes('descricao') || !header.includes('valor') || !header.includes('categoria')) { alert('Cabeçalho do CSV inválido. As colunas devem ser: Data,Descricao,Valor,Categoria.'); return; }
             
             const newExpenses = [];
-            let importedCount = 0;
-            let skippedCount = 0;
+            let importedCount = 0, skippedCount = 0;
 
             for (let i = 1; i < lines.length; i++) {
                 const values = lines[i].split(',');
                 if (values.length === 4) {
-                    const date = values[0].trim();
-                    const description = values[1].trim();
-                    const amount = parseFloat(values[2]);
-                    const category = values[3].trim();
-                    
+                    const date = values[0].trim(), description = values[1].trim(), amount = parseFloat(values[2]), category = values[3].trim();
                     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
                     if (dateRegex.test(date) && description && !isNaN(amount) && amount > 0 && category) {
                         newExpenses.push({ id: Date.now() + i, date, description, amount, category });
                         importedCount++;
-                    } else {
-                        skippedCount++;
-                    }
-                } else {
-                    skippedCount++;
-                }
+                    } else { skippedCount++; }
+                } else { skippedCount++; }
             }
 
             if(newExpenses.length > 0) {
@@ -270,7 +301,7 @@ const AppState = {
                 this.renderAll();
             }
 
-            alert(`${importedCount} gastos importados com sucesso. ${skippedCount > 0 ? `${skippedCount} linhas foram ignoradas por formato inválido.` : ''}`);
+            alert(`${importedCount} gastos importados. ${skippedCount > 0 ? `${skippedCount} linhas ignoradas.` : ''}`);
             fileInput.value = '';
             document.getElementById('file-chosen-text').textContent = 'Clique para escolher um arquivo';
             document.getElementById('import-csv-btn').disabled = true;
@@ -312,14 +343,8 @@ const AppState = {
         if (item) { item.value = parseFloat(value) || 0; this.updateDashboard(); }
     },
     addVariableExpense() {
-        const dateInput = document.getElementById('expense-date');
-        const descInput = document.getElementById('expense-desc');
-        const amountInput = document.getElementById('expense-amount');
-        const categoryInput = document.getElementById('expense-category');
-        const date = dateInput.value;
-        const description = descInput.value;
-        const amount = parseFloat(amountInput.value);
-        const category = categoryInput.value;
+        const dateInput = document.getElementById('expense-date'), descInput = document.getElementById('expense-desc'), amountInput = document.getElementById('expense-amount'), categoryInput = document.getElementById('expense-category');
+        const date = dateInput.value, description = descInput.value, amount = parseFloat(amountInput.value), category = categoryInput.value;
         if (!date || !description || isNaN(amount) || amount <= 0) return;
         this.getMonthData(this.selectedMonth).variableExpenses.push({ id: Date.now(), date, description, amount, category });
         descInput.value = ''; amountInput.value = '';
@@ -366,11 +391,11 @@ const AppState = {
         this.updateCharts(totals);
         this.saveState();
     },
-    showModal() { document.getElementById('confirmation-modal').classList.remove('hidden'); },
-    hideModal() { document.getElementById('confirmation-modal').classList.add('hidden'); },
+    showModal(modalId) { document.getElementById(modalId).classList.remove('hidden'); },
+    hideModal(modalId) { document.getElementById(modalId).classList.add('hidden'); },
     confirmClearHistory() {
         this.getMonthData(this.selectedMonth).variableExpenses = [];
-        this.hideModal(); this.renderVariableExpenses(); this.updateDashboard();
+        this.hideModal('confirmation-modal'); this.renderVariableExpenses(); this.updateDashboard();
     },
     createCharts() {
         if (this.charts.donut) this.charts.donut.destroy();
