@@ -169,6 +169,7 @@
                         <button id="clear-history-btn" title="Limpar histórico do mês" class="p-2 text-gray-400 hover:text-red-500 transition-colors bg-gray-50 border rounded-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                     </div>
                 </div>
+                <div id="category-total-display" class="text-center font-semibold text-lg text-gray-700 my-2 p-2 bg-gray-100 rounded-md hidden"></div>
                 <div class="h-[calc(100vh-20rem)] min-h-[500px] overflow-y-auto"><table class="w-full text-left"><thead class="sticky top-0 bg-white/80 backdrop-blur-sm"><tr><th class="py-2 font-semibold text-sm">Data</th><th class="py-2 font-semibold text-sm">Descrição</th><th class="py-2 font-semibold text-sm text-right">Valor</th><th class="py-2 font-semibold text-sm text-center">Ação</th></tr></thead><tbody id="variable-expenses-list"></tbody></table><p id="empty-history" class="text-center text-gray-500 py-10">Nenhum gasto lançado ainda.</p></div>
             </div>
 
@@ -331,6 +332,9 @@ const AppState = {
         }
         return this.data[monthKey];
     },
+    formatCurrency(value) {
+        return `R$ ${value.toFixed(2).replace('.', ',')}`;
+    },
     renderFixedInputs() {
         const monthData = this.getMonthData(this.selectedMonth);
         const incomesContainer = document.getElementById('fixed-incomes-container');
@@ -367,11 +371,17 @@ const AppState = {
     renderVariableExpenses() {
         const listEl = document.getElementById('variable-expenses-list');
         const emptyEl = document.getElementById('empty-history');
+        const categoryTotalEl = document.getElementById('category-total-display');
         const monthData = this.getMonthData(this.selectedMonth);
         let expensesToRender = [...monthData.variableExpenses];
 
         if (this.currentCategoryFilter !== 'all') {
             expensesToRender = expensesToRender.filter(exp => exp.category === this.currentCategoryFilter);
+            const categoryTotal = expensesToRender.reduce((sum, exp) => sum + exp.amount, 0);
+            categoryTotalEl.textContent = `Total (${this.currentCategoryFilter}): ${this.formatCurrency(categoryTotal)}`;
+            categoryTotalEl.classList.remove('hidden');
+        } else {
+            categoryTotalEl.classList.add('hidden');
         }
 
         expensesToRender.sort((a, b) => {
@@ -390,7 +400,7 @@ const AppState = {
             const row = document.createElement('tr');
             row.className = 'border-b border-gray-200 text-gray-700 text-sm';
             const formattedDate = new Date(exp.date + 'T00:00:00').toLocaleDateString('pt-BR');
-            row.innerHTML = `<td class="py-3 px-1">${formattedDate}</td><td class="py-3 px-1">${exp.description}<br><span class="text-xs font-semibold bg-gray-200 text-gray-800 px-2 py-1 rounded-full">${exp.category}</span></td><td class="py-3 px-1 text-right font-medium">R$ ${exp.amount.toFixed(2)}</td><td class="py-3 px-1 text-center"><button onclick="AppState.deleteVariableExpense(${exp.id})" class="text-red-500 hover:text-red-700 font-bold text-lg">&times;</button></td>`;
+            row.innerHTML = `<td class="py-3 px-1">${formattedDate}</td><td class="py-3 px-1">${exp.description}<br><span class="text-xs font-semibold bg-gray-200 text-gray-800 px-2 py-1 rounded-full">${exp.category}</span></td><td class="py-3 px-1 text-right font-medium">${this.formatCurrency(exp.amount)}</td><td class="py-3 px-1 text-center"><button onclick="AppState.deleteVariableExpense(${exp.id})" class="text-red-500 hover:text-red-700 font-bold text-lg">&times;</button></td>`;
             listEl.appendChild(row);
         });
     },
@@ -404,13 +414,13 @@ const AppState = {
     updateDashboard() {
         const totals = this.getTotals();
         const mainBalanceEl = document.getElementById('main-balance');
-        mainBalanceEl.textContent = `R$ ${totals.balance.toFixed(2)}`;
+        mainBalanceEl.textContent = this.formatCurrency(totals.balance);
         mainBalanceEl.className = 'text-5xl font-bold transition-colors duration-300 ' + (totals.balance >= 0 ? 'balance-positive' : 'balance-negative');
-        document.getElementById('total-incomes').textContent = `R$ ${totals.totalFixedIncomes.toFixed(2)}`;
-        document.getElementById('total-expenses').textContent = `R$ ${totals.totalExpenses.toFixed(2)}`;
+        document.getElementById('total-incomes').textContent = this.formatCurrency(totals.totalFixedIncomes);
+        document.getElementById('total-expenses').textContent = this.formatCurrency(totals.totalExpenses);
         
-        document.getElementById('fixed-incomes-total-display').textContent = `R$ ${totals.totalFixedIncomes.toFixed(2)}`;
-        document.getElementById('fixed-expenses-total-display').textContent = `R$ ${totals.totalFixedExpenses.toFixed(2)}`;
+        document.getElementById('fixed-incomes-total-display').textContent = this.formatCurrency(totals.totalFixedIncomes);
+        document.getElementById('fixed-expenses-total-display').textContent = this.formatCurrency(totals.totalFixedExpenses);
 
         this.updateCharts(totals);
         this.saveState();
