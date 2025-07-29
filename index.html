@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orçamento Pessoal Inteligente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .summary-card-positive {
+            background-color: #E6F4EA; /* Verde claro */
+            color: #1E4620; /* Verde escuro */
+        }
+        .summary-card-negative {
+            background-color: #FCE8E6; /* Vermelho claro */
+            color: #A50E0E; /* Vermelho escuro */
+        }
+        .summary-card-neutral {
+            background-color: #E8F0FE; /* Azul claro */
+            color: #174EA6; /* Azul escuro */
+        }
+        .balance-positive {
+            color: #16A34A; /* Verde */
+        }
+        .balance-negative {
+            color: #DC2626; /* Vermelho */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-6xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">Orçamento Pessoal Inteligente</h1>
+            <p class="text-gray-600 mt-2">Seu controle financeiro, de forma fácil e visual.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+
+            <!-- Coluna Principal: Balanço e Entradas/Saídas Fixas -->
+            <div class="lg:col-span-3 space-y-8">
+                
+                <!-- Card de Balanço Geral -->
+                <div class="bg-white p-6 rounded-2xl shadow-md">
+                    <h2 class="text-2xl font-bold mb-4">Balanço Geral do Mês</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                        <div class="summary-card-positive p-4 rounded-lg">
+                            <p class="text-sm font-semibold">Entradas</p>
+                            <p class="text-2xl font-bold" id="summary-incomes">R$ 0,00</p>
+                        </div>
+                        <div class="summary-card-negative p-4 rounded-lg">
+                            <p class="text-sm font-semibold">Saídas Totais</p>
+                            <p class="text-2xl font-bold" id="summary-outcomes">R$ 0,00</p>
+                        </div>
+                         <div class="summary-card-neutral p-4 rounded-lg">
+                            <p class="text-sm font-semibold">Saldo Final</p>
+                            <p class="text-2xl font-bold" id="summary-balance">R$ 0,00</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card de Entradas e Saídas Fixas -->
+                <div class="bg-white p-6 rounded-2xl shadow-md">
+                    <h2 class="text-2xl font-bold mb-4">Valores Fixos</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Entradas -->
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3 text-green-700">Entradas Fixas</h3>
+                            <div class="space-y-2">
+                                <div>
+                                    <label for="salario" class="text-sm font-medium">Salário</label>
+                                    <input type="number" id="salario" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
+                                </div>
+                                <div>
+                                    <label for="renda-extra" class="text-sm font-medium">Renda Extra</label>
+                                    <input type="number" id="renda-extra" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
+                                </div>
+                                <div>
+                                    <label for="entrada-karine" class="text-sm font-medium">Entrada Karine</label>
+                                    <input type="number" id="entrada-karine" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Saídas -->
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3 text-red-700">Saídas Fixas</h3>
+                            <div class="space-y-2">
+                                 <div>
+                                    <label for="financiamento" class="text-sm font-medium">Financiamento</label>
+                                    <input type="number" id="financiamento" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
+                                </div>
+                                <div>
+                                    <label for="condominio" class="text-sm font-medium">Condomínio</label>
+                                    <input type="number" id="condominio" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
+                                </div>
+                                 <div>
+                                    <label for="internet-cel" class="text-sm font-medium">Internet+Cel</label>
+                                    <input type="number" id="internet-cel" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
+                                </div>
+                                <div>
+                                    <label for="luz" class="text-sm font-medium">Luz</label>
+                                    <input type="number" id="luz" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
+                                </div>
+                                <div>
+                                    <label for="astec" class="text-sm font-medium">Astec</label>
+                                    <input type="number" id="astec" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
+                                </div>
+                                <div>
+                                    <label for="escola-vico" class="text-sm font-medium">Escola Vico</label>
+                                    <input type="number" id="escola-vico" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coluna da Direita: Gastos com Cartão -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-md">
+                <h2 class="text-2xl font-bold mb-4">Lançar Gasto do Cartão</h2>
+                <form id="expense-form" class="space-y-4">
+                    <div>
+                        <label for="expense-description" class="text-sm font-medium">Descrição</label>
+                        <input type="text" id="expense-description" placeholder="Ex: Supermercado" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    <div>
+                        <label for="expense-amount" class="text-sm font-medium">Valor</label>
+                        <input type="number" id="expense-amount" placeholder="R$ 120,50" step="0.01" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-md hover:bg-blue-700 transition-colors">
+                        Adicionar Gasto
+                    </button>
+                </form>
+
+                <hr class="my-6">
+
+                <h3 class="text-xl font-bold mb-3">Histórico de Gastos</h3>
+                <div class="h-80 overflow-y-auto pr-2">
+                    <table class="w-full text-left">
+                        <thead class="sticky top-0 bg-white">
+                           <tr>
+                                <th class="py-2 font-semibold">Descrição</th>
+                                <th class="py-2 font-semibold text-right">Valor</th>
+                           </tr>
+                        </thead>
+                        <tbody id="expense-list">
+                            <!-- Linhas de gastos serão inseridas aqui -->
+                        </tbody>
+                    </table>
+                     <p id="empty-state" class="text-center text-gray-500 py-10">Nenhum gasto adicionado ainda.</p>
+                </div>
+                 <div class="mt-4 pt-4 border-t-2 font-bold text-lg flex justify-between">
+                    <span>Total Cartão:</span>
+                    <span id="card-total">R$ 0,00</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Estado inicial da aplicação
+        const state = {
+            cardExpenses: [],
+            fixedIncomes: [
+                { id: 'salario', value: 0 },
+                { id: 'renda-extra', value: 0 },
+                { id: 'entrada-karine', value: 0 }
+            ],
+            fixedExpenses: [
+                { id: 'financiamento', value: 0 },
+                { id: 'condominio', value: 0 },
+                { id: 'internet-cel', value: 0 },
+                { id: 'luz', value: 0 },
+                { id: 'astec', value: 0 },
+                { id: 'escola-vico', value: 0 }
+            ]
+        };
+
+        // Elementos do DOM
+        const expenseForm = document.getElementById('expense-form');
+        const expenseDescriptionInput = document.getElementById('expense-description');
+        const expenseAmountInput = document.getElementById('expense-amount');
+        const expenseList = document.getElementById('expense-list');
+        const emptyState = document.getElementById('empty-state');
+        const cardTotalEl = document.getElementById('card-total');
+        const summaryIncomesEl = document.getElementById('summary-incomes');
+        const summaryOutcomesEl = document.getElementById('summary-outcomes');
+        const summaryBalanceEl = document.getElementById('summary-balance');
+
+        // Função para formatar números como moeda (Real Brasileiro)
+        function formatCurrency(value) {
+            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+        
+        // Função principal para atualizar todos os cálculos e a UI
+        function updateBalance() {
+            // Calcula os totais das entradas fixas
+            const totalIncomes = state.fixedIncomes.reduce((sum, item) => {
+                const input = document.getElementById(item.id);
+                return sum + (parseFloat(input.value) || 0);
+            }, 0);
+
+            // Calcula os totais das saídas fixas
+            const totalFixedExpenses = state.fixedExpenses.reduce((sum, item) => {
+                const input = document.getElementById(item.id);
+                return sum + (parseFloat(input.value) || 0);
+            }, 0);
+
+            // Calcula o total dos gastos variáveis (cartão)
+            const totalCardExpenses = state.cardExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+            
+            // Calcula os totais gerais
+            const totalOutcomes = totalFixedExpenses + totalCardExpenses;
+            const finalBalance = totalIncomes - totalOutcomes;
+            
+            // Atualiza o DOM (a tela) com os novos valores
+            summaryIncomesEl.textContent = formatCurrency(totalIncomes);
+            summaryOutcomesEl.textContent = formatCurrency(totalOutcomes);
+            summaryBalanceEl.textContent = formatCurrency(finalBalance);
+            cardTotalEl.textContent = formatCurrency(totalCardExpenses);
+
+            // Atualiza a cor do saldo final
+            summaryBalanceEl.classList.remove('balance-positive', 'balance-negative');
+            if (finalBalance >= 0) {
+                summaryBalanceEl.classList.add('balance-positive');
+            } else {
+                summaryBalanceEl.classList.add('balance-negative');
+            }
+        }
+
+        // Função para renderizar a lista de gastos do cartão
+        function renderCardExpenses() {
+            expenseList.innerHTML = ''; // Limpa a lista atual
+            
+            if (state.cardExpenses.length === 0) {
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+                state.cardExpenses.forEach(expense => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-200';
+                    row.innerHTML = `
+                        <td class="py-2">${expense.description}</td>
+                        <td class="py-2 text-right text-red-600 font-medium">${formatCurrency(expense.amount)}</td>
+                    `;
+                    expenseList.appendChild(row);
+                });
+            }
+            updateBalance(); // Recalcula tudo sempre que a lista de gastos muda
+        }
+
+        // Event listener para o formulário de adicionar gasto
+        expenseForm.addEventListener('submit', (e) => {
+            e.preventDefault(); // Impede o recarregamento da página
+
+            const description = expenseDescriptionInput.value;
+            const amount = parseFloat(expenseAmountInput.value);
+
+            if (description.trim() === '' || isNaN(amount) || amount <= 0) {
+                return;
+            }
+
+            // Adiciona o novo gasto ao estado da aplicação
+            state.cardExpenses.push({ description, amount });
+
+            // Limpa os campos do formulário
+            expenseDescriptionInput.value = '';
+            expenseAmountInput.value = '';
+
+            // Renderiza novamente a lista de gastos
+            renderCardExpenses();
+        });
+
+        // Inicializa a aplicação
+        window.onload = () => {
+            renderCardExpenses();
+        };
+
+    </script>
+</body>
+</html>
