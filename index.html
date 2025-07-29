@@ -3,284 +3,352 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orçamento Pessoal Inteligente</title>
+    <title>Dashboard de Orçamento Pessoal</title>
+    
+    <!-- Chosen Palette: Calm Finance -->
+    <!-- Application Structure Plan: A two-column responsive dashboard. The left column is for data entry (fixed values and a form for variable expenses), and the right column is a real-time dashboard with summary cards and interactive charts. A month selector now controls the entire state, making the data context-specific. This structure separates input from output, providing a clear and immediate feedback loop for the user, which is more intuitive than a spreadsheet's tabbed layout. -->
+    <!-- Visualization & Content Choices: Summary -> KPI Cards (HTML) -> Quick overview. Expense Breakdown (Fixed vs. Variable) -> Donut Chart (Chart.js) -> Shows spending proportions. Variable Expense Categories -> Bar Chart (Chart.js) -> Compares spending habits (category field added for value). Expense Log -> Dynamic Table (HTML/JS) -> Detailed record-keeping. All interactions (input, adding/deleting expenses) trigger instant updates to all visuals and summaries for the selected month. A "clear history" button with a confirmation modal was added for data management. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #F8F7F4;
+            color: #333333;
         }
-        .summary-card-positive {
-            background-color: #E6F4EA; /* Verde claro */
-            color: #1E4620; /* Verde escuro */
+        .card {
+            background-color: #FFFFFF;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s ease-in-out;
         }
-        .summary-card-negative {
-            background-color: #FCE8E6; /* Vermelho claro */
-            color: #A50E0E; /* Vermelho escuro */
+        .balance-positive { color: #22C55E; }
+        .balance-negative { color: #EF4444; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
         }
-        .summary-card-neutral {
-            background-color: #E8F0FE; /* Azul claro */
-            color: #174EA6; /* Azul escuro */
-        }
-        .balance-positive {
-            color: #16A34A; /* Verde */
-        }
-        .balance-negative {
-            color: #DC2626; /* Vermelho */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        .modal-overlay {
+            transition: opacity 0.3s ease;
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
-
-    <div class="container mx-auto p-4 md:p-8 max-w-6xl">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900">Orçamento Pessoal Inteligente</h1>
-            <p class="text-gray-600 mt-2">Seu controle financeiro, de forma fácil e visual.</p>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="text-center md:text-left mb-4 md:mb-0">
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Meu Painel Financeiro</h1>
+                    <p class="text-gray-500 mt-2">Sua vida financeira, organizada e visual.</p>
+                </div>
+                <div>
+                    <label for="month-selector" class="block text-sm font-medium text-gray-700 mb-1">Mês de Referência</label>
+                    <input type="month" id="month-selector" class="p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
         </header>
 
         <main class="grid grid-cols-1 lg:grid-cols-5 gap-8">
-
-            <!-- Coluna Principal: Balanço e Entradas/Saídas Fixas -->
+            
+            <!-- Coluna de Controle (Esquerda) -->
             <div class="lg:col-span-3 space-y-8">
-                
-                <!-- Card de Balanço Geral -->
-                <div class="bg-white p-6 rounded-2xl shadow-md">
-                    <h2 class="text-2xl font-bold mb-4">Balanço Geral do Mês</h2>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-                        <div class="summary-card-positive p-4 rounded-lg">
-                            <p class="text-sm font-semibold">Entradas</p>
-                            <p class="text-2xl font-bold" id="summary-incomes">R$ 0,00</p>
-                        </div>
-                        <div class="summary-card-negative p-4 rounded-lg">
-                            <p class="text-sm font-semibold">Saídas Totais</p>
-                            <p class="text-2xl font-bold" id="summary-outcomes">R$ 0,00</p>
-                        </div>
-                         <div class="summary-card-neutral p-4 rounded-lg">
-                            <p class="text-sm font-semibold">Saldo Final</p>
-                            <p class="text-2xl font-bold" id="summary-balance">R$ 0,00</p>
-                        </div>
+                <div class="card p-6">
+                    <h2 class="text-xl font-bold mb-4">Controle Fixo e Variável</h2>
+                    <p class="text-gray-600 mb-6 text-sm">Preencha seus valores fixos mensais e depois lance seus gastos do dia a dia. Tudo será atualizado automaticamente no painel à direita.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div id="fixed-incomes-container" class="space-y-3"></div>
+                        <div id="fixed-expenses-container" class="space-y-3"></div>
+                    </div>
+
+                    <div class="pt-6 border-t">
+                        <h3 class="text-lg font-semibold mb-3">Lançar Gasto Variável</h3>
+                        <form id="variable-expense-form" class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                            <div class="sm:col-span-2">
+                                <label for="expense-desc" class="text-sm font-medium">Descrição</label>
+                                <input type="text" id="expense-desc" placeholder="Ex: Almoço" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" required>
+                            </div>
+                            <div>
+                                <label for="expense-amount" class="text-sm font-medium">Valor (R$)</label>
+                                <input type="number" id="expense-amount" placeholder="25,50" step="0.01" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" required>
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded-md hover:bg-blue-700 transition-colors h-10">Adicionar</button>
+                            <div class="sm:col-span-2">
+                                <label for="expense-category" class="text-sm font-medium">Categoria</label>
+                                <select id="expense-category" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500">
+                                    <option>Alimentação</option><option>Transporte</option><option>Lazer</option><option>Moradia</option><option>Saúde</option><option>Compras</option><option>Outros</option>
+                                </select>
+                            </div>
+                        </form>
                     </div>
                 </div>
 
-                <!-- Card de Entradas e Saídas Fixas -->
-                <div class="bg-white p-6 rounded-2xl shadow-md">
-                    <h2 class="text-2xl font-bold mb-4">Valores Fixos</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Entradas -->
-                        <div>
-                            <h3 class="text-lg font-semibold mb-3 text-green-700">Entradas Fixas</h3>
-                            <div class="space-y-2">
-                                <div>
-                                    <label for="salario" class="text-sm font-medium">Salário</label>
-                                    <input type="number" id="salario" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
-                                </div>
-                                <div>
-                                    <label for="renda-extra" class="text-sm font-medium">Renda Extra</label>
-                                    <input type="number" id="renda-extra" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
-                                </div>
-                                <div>
-                                    <label for="entrada-karine" class="text-sm font-medium">Entrada Karine</label>
-                                    <input type="number" id="entrada-karine" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Saídas -->
-                        <div>
-                            <h3 class="text-lg font-semibold mb-3 text-red-700">Saídas Fixas</h3>
-                            <div class="space-y-2">
-                                 <div>
-                                    <label for="financiamento" class="text-sm font-medium">Financiamento</label>
-                                    <input type="number" id="financiamento" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
-                                </div>
-                                <div>
-                                    <label for="condominio" class="text-sm font-medium">Condomínio</label>
-                                    <input type="number" id="condominio" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
-                                </div>
-                                 <div>
-                                    <label for="internet-cel" class="text-sm font-medium">Internet+Cel</label>
-                                    <input type="number" id="internet-cel" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
-                                </div>
-                                <div>
-                                    <label for="luz" class="text-sm font-medium">Luz</label>
-                                    <input type="number" id="luz" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
-                                </div>
-                                <div>
-                                    <label for="astec" class="text-sm font-medium">Astec</label>
-                                    <input type="number" id="astec" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
-                                </div>
-                                <div>
-                                    <label for="escola-vico" class="text-sm font-medium">Escola Vico</label>
-                                    <input type="number" id="escola-vico" placeholder="R$ 0" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" oninput="updateBalance()">
-                                </div>
-                            </div>
-                        </div>
+                <div class="card p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold">Histórico de Gastos Variáveis</h3>
+                        <button id="clear-history-btn" title="Limpar histórico do mês" class="text-gray-400 hover:text-red-500 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </div>
+                    <div class="h-96 overflow-y-auto">
+                        <table class="w-full text-left"><thead class="sticky top-0 bg-white/80 backdrop-blur-sm"><tr><th class="py-2 font-semibold text-sm">Descrição</th><th class="py-2 font-semibold text-sm">Categoria</th><th class="py-2 font-semibold text-sm text-right">Valor</th><th class="py-2 font-semibold text-sm text-center">Ação</th></tr></thead><tbody id="variable-expenses-list"></tbody></table>
+                        <p id="empty-history" class="text-center text-gray-500 py-10">Nenhum gasto lançado ainda.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Coluna da Direita: Gastos com Cartão -->
-            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-md">
-                <h2 class="text-2xl font-bold mb-4">Lançar Gasto do Cartão</h2>
-                <form id="expense-form" class="space-y-4">
-                    <div>
-                        <label for="expense-description" class="text-sm font-medium">Descrição</label>
-                        <input type="text" id="expense-description" placeholder="Ex: Supermercado" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" required>
+            <!-- Coluna do Dashboard (Direita) -->
+            <div class="lg:col-span-2 space-y-8">
+                <div class="card p-6">
+                    <h2 class="text-xl font-bold mb-4">Visão Geral</h2>
+                     <p class="text-gray-600 mb-6 text-sm">Este é o resumo da sua saúde financeira este mês. Os valores e gráficos se ajustam a cada nova informação que você insere.</p>
+                    <div class="text-center mb-6">
+                        <p class="text-gray-500">SALDO ATUAL</p>
+                        <p id="main-balance" class="text-5xl font-bold transition-colors duration-300">R$ 0,00</p>
                     </div>
-                    <div>
-                        <label for="expense-amount" class="text-sm font-medium">Valor</label>
-                        <input type="number" id="expense-amount" placeholder="R$ 120,50" step="0.01" class="w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500" required>
+                    <div class="grid grid-cols-2 gap-4 text-center">
+                        <div class="bg-green-50 p-3 rounded-lg"><p class="text-sm font-semibold text-green-800">Receitas</p><p id="total-incomes" class="text-xl font-bold text-green-600">R$ 0,00</p></div>
+                        <div class="bg-red-50 p-3 rounded-lg"><p class="text-sm font-semibold text-red-800">Despesas</p><p id="total-expenses" class="text-xl font-bold text-red-600">R$ 0,00</p></div>
                     </div>
-                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-md hover:bg-blue-700 transition-colors">
-                        Adicionar Gasto
-                    </button>
-                </form>
-
-                <hr class="my-6">
-
-                <h3 class="text-xl font-bold mb-3">Histórico de Gastos</h3>
-                <div class="h-80 overflow-y-auto pr-2">
-                    <table class="w-full text-left">
-                        <thead class="sticky top-0 bg-white">
-                           <tr>
-                                <th class="py-2 font-semibold">Descrição</th>
-                                <th class="py-2 font-semibold text-right">Valor</th>
-                           </tr>
-                        </thead>
-                        <tbody id="expense-list">
-                            <!-- Linhas de gastos serão inseridas aqui -->
-                        </tbody>
-                    </table>
-                     <p id="empty-state" class="text-center text-gray-500 py-10">Nenhum gasto adicionado ainda.</p>
                 </div>
-                 <div class="mt-4 pt-4 border-t-2 font-bold text-lg flex justify-between">
-                    <span>Total Cartão:</span>
-                    <span id="card-total">R$ 0,00</span>
+                <div class="card p-6">
+                    <h2 class="text-xl font-bold mb-4">Análise de Despesas</h2>
+                    <p class="text-gray-600 mb-6 text-sm">Entenda a composição dos seus gastos. O primeiro gráfico mostra a proporção entre suas despesas fixas e variáveis. O segundo detalha seus gastos por categoria.</p>
+                    <div><h3 class="font-semibold text-center mb-2">Fixas vs. Variáveis</h3><div class="chart-container h-56"><canvas id="expenses-donut-chart"></canvas></div></div>
+                    <div class="mt-8"><h3 class="font-semibold text-center mb-2">Gastos por Categoria</h3><div class="chart-container h-64"><canvas id="expenses-bar-chart"></canvas></div></div>
                 </div>
             </div>
         </main>
     </div>
 
-    <script>
-        // Estado inicial da aplicação
-        const state = {
-            cardExpenses: [],
-            fixedIncomes: [
-                { id: 'salario', value: 0 },
-                { id: 'renda-extra', value: 0 },
-                { id: 'entrada-karine', value: 0 }
-            ],
-            fixedExpenses: [
-                { id: 'financiamento', value: 0 },
-                { id: 'condominio', value: 0 },
-                { id: 'internet-cel', value: 0 },
-                { id: 'luz', value: 0 },
-                { id: 'astec', value: 0 },
-                { id: 'escola-vico', value: 0 }
-            ]
-        };
+    <!-- Modal de Confirmação -->
+    <div id="confirmation-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg p-8 shadow-2xl max-w-sm w-full text-center">
+            <h3 class="text-xl font-bold mb-4">Tem certeza?</h3>
+            <p class="text-gray-600 mb-6">Esta ação apagará todos os gastos variáveis do mês selecionado. Essa ação não pode ser desfeita.</p>
+            <div class="flex justify-center gap-4">
+                <button id="cancel-clear-btn" class="px-6 py-2 rounded-md text-gray-800 bg-gray-200 hover:bg-gray-300 font-semibold">Cancelar</button>
+                <button id="confirm-clear-btn" class="px-6 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 font-semibold">Apagar</button>
+            </div>
+        </div>
+    </div>
 
-        // Elementos do DOM
-        const expenseForm = document.getElementById('expense-form');
-        const expenseDescriptionInput = document.getElementById('expense-description');
-        const expenseAmountInput = document.getElementById('expense-amount');
-        const expenseList = document.getElementById('expense-list');
-        const emptyState = document.getElementById('empty-state');
-        const cardTotalEl = document.getElementById('card-total');
-        const summaryIncomesEl = document.getElementById('summary-incomes');
-        const summaryOutcomesEl = document.getElementById('summary-outcomes');
-        const summaryBalanceEl = document.getElementById('summary-balance');
+<script>
+const AppState = {
+    data: {},
+    selectedMonth: '',
+    charts: { donut: null, bar: null },
+    monthTemplate: {
+        fixedIncomes: [
+            { id: 'salario', label: 'Salário', value: 0.00 },
+            { id: 'renda_extra', label: 'Renda Extra', value: 0.00 },
+            { id: 'pix_karine', label: 'Pix Karine', value: 0.00 }
+        ],
+        fixedExpenses: [
+            { id: 'financiamento', label: 'Financiamento', value: 0.00 },
+            { id: 'condominio', label: 'Condomínio', value: 0.00 },
+            { id: 'luz', label: 'Luz', value: 0.00 },
+            { id: 'internet_celular', label: 'Internet/Celular', value: 0.00 },
+            { id: 'assinaturas', label: 'Assinaturas', value: 0.00 },
+            { id: 'escola_vico', label: 'Escola Vico', value: 0.00 },
+            { id: 'unimed', label: 'Unimed', value: 0.00 }
+        ],
+        variableExpenses: []
+    },
 
-        // Função para formatar números como moeda (Real Brasileiro)
-        function formatCurrency(value) {
-            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        }
+    init() {
+        const today = new Date();
+        this.selectedMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        document.getElementById('month-selector').value = this.selectedMonth;
         
-        // Função principal para atualizar todos os cálculos e a UI
-        function updateBalance() {
-            // Calcula os totais das entradas fixas
-            const totalIncomes = state.fixedIncomes.reduce((sum, item) => {
-                const input = document.getElementById(item.id);
-                return sum + (parseFloat(input.value) || 0);
-            }, 0);
+        this.loadState();
+        this.getMonthData(this.selectedMonth);
+        this.createCharts();
+        this.renderAll();
+        this.addEventListeners();
+    },
+    
+    renderAll() {
+        this.renderFixedInputs();
+        this.renderVariableExpenses();
+        this.updateDashboard();
+    },
 
-            // Calcula os totais das saídas fixas
-            const totalFixedExpenses = state.fixedExpenses.reduce((sum, item) => {
-                const input = document.getElementById(item.id);
-                return sum + (parseFloat(input.value) || 0);
-            }, 0);
-
-            // Calcula o total dos gastos variáveis (cartão)
-            const totalCardExpenses = state.cardExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-            
-            // Calcula os totais gerais
-            const totalOutcomes = totalFixedExpenses + totalCardExpenses;
-            const finalBalance = totalIncomes - totalOutcomes;
-            
-            // Atualiza o DOM (a tela) com os novos valores
-            summaryIncomesEl.textContent = formatCurrency(totalIncomes);
-            summaryOutcomesEl.textContent = formatCurrency(totalOutcomes);
-            summaryBalanceEl.textContent = formatCurrency(finalBalance);
-            cardTotalEl.textContent = formatCurrency(totalCardExpenses);
-
-            // Atualiza a cor do saldo final
-            summaryBalanceEl.classList.remove('balance-positive', 'balance-negative');
-            if (finalBalance >= 0) {
-                summaryBalanceEl.classList.add('balance-positive');
-            } else {
-                summaryBalanceEl.classList.add('balance-negative');
-            }
-        }
-
-        // Função para renderizar a lista de gastos do cartão
-        function renderCardExpenses() {
-            expenseList.innerHTML = ''; // Limpa a lista atual
-            
-            if (state.cardExpenses.length === 0) {
-                emptyState.style.display = 'block';
-            } else {
-                emptyState.style.display = 'none';
-                state.cardExpenses.forEach(expense => {
-                    const row = document.createElement('tr');
-                    row.className = 'border-b border-gray-200';
-                    row.innerHTML = `
-                        <td class="py-2">${expense.description}</td>
-                        <td class="py-2 text-right text-red-600 font-medium">${formatCurrency(expense.amount)}</td>
-                    `;
-                    expenseList.appendChild(row);
-                });
-            }
-            updateBalance(); // Recalcula tudo sempre que a lista de gastos muda
-        }
-
-        // Event listener para o formulário de adicionar gasto
-        expenseForm.addEventListener('submit', (e) => {
-            e.preventDefault(); // Impede o recarregamento da página
-
-            const description = expenseDescriptionInput.value;
-            const amount = parseFloat(expenseAmountInput.value);
-
-            if (description.trim() === '' || isNaN(amount) || amount <= 0) {
-                return;
-            }
-
-            // Adiciona o novo gasto ao estado da aplicação
-            state.cardExpenses.push({ description, amount });
-
-            // Limpa os campos do formulário
-            expenseDescriptionInput.value = '';
-            expenseAmountInput.value = '';
-
-            // Renderiza novamente a lista de gastos
-            renderCardExpenses();
+    addEventListeners() {
+        document.getElementById('month-selector').addEventListener('change', (e) => {
+            this.selectedMonth = e.target.value;
+            this.getMonthData(this.selectedMonth);
+            this.renderAll();
         });
 
-        // Inicializa a aplicação
-        window.onload = () => {
-            renderCardExpenses();
-        };
+        document.getElementById('variable-expense-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.addVariableExpense();
+        });
+        
+        document.getElementById('clear-history-btn').addEventListener('click', () => this.showModal());
+        document.getElementById('cancel-clear-btn').addEventListener('click', () => this.hideModal());
+        document.getElementById('confirm-clear-btn').addEventListener('click', () => this.confirmClearHistory());
+        document.getElementById('confirmation-modal').addEventListener('click', (e) => {
+             if (e.target.id === 'confirmation-modal') this.hideModal();
+        });
+    },
 
-    </script>
+    saveState() {
+        localStorage.setItem('budgetAppData', JSON.stringify(this.data));
+    },
+
+    loadState() {
+        const savedData = localStorage.getItem('budgetAppData');
+        if (savedData) this.data = JSON.parse(savedData);
+    },
+
+    getMonthData(monthKey) {
+        if (!this.data[monthKey]) {
+            this.data[monthKey] = JSON.parse(JSON.stringify(this.monthTemplate));
+        }
+        return this.data[monthKey];
+    },
+
+    createFixedInput(item, type) {
+        return `<div><label for="${item.id}-${this.selectedMonth}" class="text-sm font-medium">${item.label}</label><input type="number" id="${item.id}-${this.selectedMonth}" data-id="${item.id}" data-type="${type}" value="${item.value.toFixed(2)}" step="0.01" class="fixed-input w-full mt-1 p-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-blue-500"></div>`;
+    },
+
+    renderFixedInputs() {
+        const monthData = this.getMonthData(this.selectedMonth);
+        const incomesContainer = document.getElementById('fixed-incomes-container');
+        const expensesContainer = document.getElementById('fixed-expenses-container');
+        
+        let incomeHTML = '<h3 class="font-semibold text-green-600">Receitas Fixas</h3>';
+        monthData.fixedIncomes.forEach(item => incomeHTML += this.createFixedInput(item, 'fixedIncomes'));
+        incomesContainer.innerHTML = incomeHTML;
+
+        let expenseHTML = '<h3 class="font-semibold text-red-600">Despesas Fixas</h3>';
+        monthData.fixedExpenses.forEach(item => expenseHTML += this.createFixedInput(item, 'fixedExpenses'));
+        expensesContainer.innerHTML = expenseHTML;
+
+        document.querySelectorAll('.fixed-input').forEach(input => {
+            input.addEventListener('input', (e) => this.updateFixedValue(e.target.dataset.type, e.target.dataset.id, e.target.value));
+        });
+    },
+    
+    updateFixedValue(type, id, value) {
+        const list = this.getMonthData(this.selectedMonth)[type];
+        const item = list.find(i => i.id === id);
+        if (item) {
+            item.value = parseFloat(value) || 0;
+            this.updateDashboard();
+        }
+    },
+
+    addVariableExpense() {
+        const descInput = document.getElementById('expense-desc');
+        const amountInput = document.getElementById('expense-amount');
+        const categoryInput = document.getElementById('expense-category');
+        const description = descInput.value;
+        const amount = parseFloat(amountInput.value);
+        const category = categoryInput.value;
+
+        if (!description || isNaN(amount) || amount <= 0) return;
+
+        this.getMonthData(this.selectedMonth).variableExpenses.push({ id: Date.now(), description, amount, category });
+
+        descInput.value = '';
+        amountInput.value = '';
+        this.renderVariableExpenses();
+        this.updateDashboard();
+    },
+
+    deleteVariableExpense(id) {
+        const monthData = this.getMonthData(this.selectedMonth);
+        monthData.variableExpenses = monthData.variableExpenses.filter(exp => exp.id !== id);
+        this.renderVariableExpenses();
+        this.updateDashboard();
+    },
+
+    renderVariableExpenses() {
+        const listEl = document.getElementById('variable-expenses-list');
+        const emptyEl = document.getElementById('empty-history');
+        const expenses = this.getMonthData(this.selectedMonth).variableExpenses;
+        listEl.innerHTML = '';
+        emptyEl.style.display = expenses.length === 0 ? 'block' : 'none';
+
+        expenses.slice().reverse().forEach(exp => {
+            const row = document.createElement('tr');
+            row.className = 'border-b border-gray-200 text-gray-700';
+            row.innerHTML = `<td class="py-3 px-1">${exp.description}</td><td class="py-3 px-1"><span class="text-xs font-semibold bg-gray-200 text-gray-800 px-2 py-1 rounded-full">${exp.category}</span></td><td class="py-3 px-1 text-right font-medium">R$ ${exp.amount.toFixed(2)}</td><td class="py-3 px-1 text-center"><button onclick="AppState.deleteVariableExpense(${exp.id})" class="text-red-500 hover:text-red-700">&times;</button></td>`;
+            listEl.appendChild(row);
+        });
+    },
+
+    getTotals() {
+        const monthData = this.getMonthData(this.selectedMonth);
+        const totalFixedIncomes = monthData.fixedIncomes.reduce((sum, item) => sum + item.value, 0);
+        const totalFixedExpenses = monthData.fixedExpenses.reduce((sum, item) => sum + item.value, 0);
+        const totalVariableExpenses = monthData.variableExpenses.reduce((sum, item) => sum + item.amount, 0);
+        const totalExpenses = totalFixedExpenses + totalVariableExpenses;
+        const balance = totalFixedIncomes - totalExpenses;
+        return { totalFixedIncomes, totalFixedExpenses, totalVariableExpenses, totalExpenses, balance };
+    },
+
+    updateDashboard() {
+        const totals = this.getTotals();
+        const mainBalanceEl = document.getElementById('main-balance');
+        mainBalanceEl.textContent = `R$ ${totals.balance.toFixed(2)}`;
+        mainBalanceEl.classList.toggle('balance-positive', totals.balance >= 0);
+        mainBalanceEl.classList.toggle('balance-negative', totals.balance < 0);
+        document.getElementById('total-incomes').textContent = `R$ ${totals.totalFixedIncomes.toFixed(2)}`;
+        document.getElementById('total-expenses').textContent = `R$ ${totals.totalExpenses.toFixed(2)}`;
+        this.updateCharts(totals);
+        this.saveState();
+    },
+
+    showModal() { document.getElementById('confirmation-modal').classList.remove('hidden'); },
+    hideModal() { document.getElementById('confirmation-modal').classList.add('hidden'); },
+
+    confirmClearHistory() {
+        this.getMonthData(this.selectedMonth).variableExpenses = [];
+        this.hideModal();
+        this.renderVariableExpenses();
+        this.updateDashboard();
+    },
+
+    createCharts() {
+        const donutCtx = document.getElementById('expenses-donut-chart').getContext('2d');
+        this.charts.donut = new Chart(donutCtx, { type: 'doughnut', data: { labels: ['Despesas Fixas', 'Despesas Variáveis'], datasets: [{ data: [0, 0], backgroundColor: ['#F87171', '#FBBF24'], borderColor: '#FFFFFF', borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
+        const barCtx = document.getElementById('expenses-bar-chart').getContext('2d');
+        this.charts.bar = new Chart(barCtx, { type: 'bar', data: { labels: [], datasets: [{ label: 'Gasto por Categoria', data: [], backgroundColor: '#60A5FA', }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true }, y: { ticks: { autoSkip: false } } } } });
+    },
+
+    updateCharts(totals) {
+        this.charts.donut.data.datasets[0].data = [totals.totalFixedExpenses, totals.totalVariableExpenses];
+        this.charts.donut.update();
+        const categoryTotals = this.getMonthData(this.selectedMonth).variableExpenses.reduce((acc, exp) => {
+            acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+            return acc;
+        }, {});
+        const sortedCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+        this.charts.bar.data.labels = sortedCategories.map(item => item[0]);
+        this.charts.bar.data.datasets[0].data = sortedCategories.map(item => item[1]);
+        this.charts.bar.update();
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => AppState.init());
+</script>
 </body>
 </html>
